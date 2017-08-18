@@ -1,6 +1,7 @@
 ## IconSetter
 
 Easily give icons to your folders so you can browse your Shows, Manga and Comics in Windows Explorer with a little more style.
+
 Example of what it can look like:
 ![](http://i.imgur.com/2ydvunc.jpg)
 What the program looks like:
