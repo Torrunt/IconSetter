@@ -5,12 +5,37 @@ using System.Linq;
 using System.Windows.Forms;
 using System.IO;
 using BrightIdeasSoftware;
+using System.Runtime.InteropServices;
 
 namespace IconSetter
 {
 
     public partial class Form1 : Form
     {
+        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        static extern UInt32 SHGetSetFolderCustomSettings(ref LPSHFOLDERCUSTOMSETTINGS pfcs, string pszPath, UInt32 dwReadWrite);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        struct LPSHFOLDERCUSTOMSETTINGS
+        {
+            public UInt32 dwSize;
+            public UInt32 dwMask;
+            public IntPtr pvid;
+            public string pszWebViewTemplate;
+            public UInt32 cchWebViewTemplate;
+            public string pszWebViewTemplateVersion;
+            public string pszInfoTip;
+            public UInt32 cchInfoTip;
+            public IntPtr pclsid;
+            public UInt32 dwFlags;
+            public string pszIconFile;
+            public UInt32 cchIconFile;
+            public int iIconIndex;
+            public string pszLogo;
+            public UInt32 cchLogo;
+        }
+
+
         private List<FolderAndIcon> Folders = new List<FolderAndIcon>();
 
         public Form1(string[] args)
@@ -106,6 +131,11 @@ namespace IconSetter
                         File.Delete(files[i]);
                 }
 
+                // delete existing desktop.ini
+                string desktopini = Path.Combine(info.FolderLocation, "desktop.ini");
+                if (File.Exists(desktopini))
+                    File.Delete(desktopini);
+
                 if (info.IconLocation == "")
                     continue;
 
@@ -115,11 +145,6 @@ namespace IconSetter
 
                 File.Copy(info.IconLocation, icon);
                 File.SetAttributes(icon, File.GetAttributes(icon) | FileAttributes.Hidden | FileAttributes.System);
-
-                // delete existing desktop.ini
-                string desktopini = Path.Combine(info.FolderLocation, "desktop.ini");
-                if (File.Exists(desktopini))
-                    File.Delete(desktopini);
 
                 // write new desktop.ini
                 using (StreamWriter writer = File.CreateText(desktopini))
@@ -132,6 +157,20 @@ namespace IconSetter
                 File.SetAttributes(desktopini, File.GetAttributes(icon) | FileAttributes.Hidden | FileAttributes.System);
 
                 File.SetAttributes(info.FolderLocation, FileAttributes.ReadOnly);
+
+                // Refresh folder icon
+                try
+                {
+                    LPSHFOLDERCUSTOMSETTINGS FolderSettings = new LPSHFOLDERCUSTOMSETTINGS();
+                    FolderSettings.dwMask = 0x10;
+                    FolderSettings.pszIconFile = icon;
+                    FolderSettings.iIconIndex = 0;
+                    UInt32 FCS_FORCEWRITE = 0x00000002;
+
+                    string pszPath = info.FolderLocation;
+                    SHGetSetFolderCustomSettings(ref FolderSettings, pszPath, FCS_FORCEWRITE);
+                }
+                catch (Exception) { }
 
                 info.AlreadySet = true;
             }
